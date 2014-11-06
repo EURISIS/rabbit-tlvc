@@ -26,15 +26,15 @@ You can build and install it like any other plugin (see
 
 # Use
 
-To use the LVC exchange, with e.g., py-amqp:
+To use the TLVC exchange, with e.g., py-amqp:
 
     import amqplib.client_0_8 as amqp
     ch = amqp.Connection().channel()
-    ch.exchange_declare("lvc", type="x-tlvc")
+    ch.exchange_declare("tlvc", type="x-tlvc")
     ch.basic_publish(amqp.Message("value"),
-                     exchange="lvc", routing_key="rabbit")
+                     exchange="tlvc", routing_key="rabbit")
     ch.queue_declare("q")
-    ch.queue_bind("q", "lvc", "rabbit")
+    ch.queue_bind("q", "tlvc", "rabbit")
     print ch.basic_get("q").body
 
 # Limitations
@@ -65,7 +65,7 @@ using two exchanges and posting full values to the LVC (from the
 originating process -- presumably you'd be using deltas to save on
 downstream bandwidth).
 
-## Direct exchanges only
+## Topic exchanges only
 
 The semantics of another kind of value-caching exchange (other than
 fanout) aren't obvious.  To choose one option though, say a
