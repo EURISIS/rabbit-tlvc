@@ -76,8 +76,6 @@ internal_add_binding(Exchange,Binding),
 
 add_binding(none, _Exchange, _Binding) ->
     ok.
-
-
     
 remove_bindings(transaction, _X, Bs) ->
     %% See rabbit_binding:lock_route_tables for the rationale for
@@ -108,43 +106,89 @@ assert_args_equivalence(X, Args) ->
 
 internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{source = X, key = K, destination = D,
                               args = Args}) ->
-    FinalNode = follow_down_create(X, split_topic_key(K)),
+    Words = split_topic_key(K),
+    FinalNode = follow_down_create(X, Words),
     trie_add_binding(X, FinalNode, D, Args),
 
-case rabbit_amqqueue:lookup(D) of
+    case rabbit_amqqueue:lookup(D) of
 
         {error, not_found} ->
             rabbit_misc:protocol_error(
               internal_error,
               "could not find queue '~s'",
               [D]);
-        {ok, Q = #amqqueue{}} ->
-[ 
-begin
-{Props, Payload} = rabbit_basic:from_content(Content),
-                    Msg = rabbit_basic:message(X, K, Props, Payload),
+        {ok, Q = #amqqueue{name = QueueName}} ->
+	
+	rabbit_misc:execute_mnesia_transaction(
+         fun() ->
+
+	    Cs = mnesia:match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'},read),
+		[
+		begin
+		
+		    CWords = split_topic_key(RK),
+		    {Props, Payload} = rabbit_basic:from_content(Content),
+		    Msg = rabbit_basic:message(X, RK, Props, Payload),
 		    Delivery = 	rabbit_basic:delivery(false, false, Msg, undefined),	
-		    Words = split_topic_key(K),
-		    %Qs = trie_match(X, FinalNode, Words, []),
-
-		[begin
-			case routeQ of
-			 QueueName -> 
-		    		rabbit_amqqueue:deliver([Q], Delivery)
+	       
+   			QN = sa_trie_match(Words,CWords,[]),
+			case QN of
+				ok -> rabbit_amqqueue:deliver([Q], Delivery);
+				[] -> noop
 			end
+
+	    
 		end
-		  || routeQ <- route(Exchange, Delivery)],
+		|| #cached{ key = #cachekey{routing_key=RK}, content = Content }<-Cs]
 
-		    Qs = rabbit_amqqueue:lookup(route(Exchange, Delivery)),
+           
+	end)
 
-		    rabbit_amqqueue:deliver(Qs, Delivery)
-end
-	|| #cached{key = #cachekey{routing_key=K}, content = Content } <-
-            mnesia:dirty_match_object(?TLVC_TABLE,#cached{_ = '_', exchange = XName, _ = '_'})]
 
     end,
 
     ok.
+
+
+%KEY MATCHING
+sa_trie_match( BWords, [], ResAcc) ->
+	case BWords of
+		[] -> ok;
+		_ ->   sa_trie_match_part( BWords, "#", fun sa_trie_match_skip_any/3, [],
+                     "Test" ++ ResAcc)
+	end;
+sa_trie_match( BWords, [W | RestW] = MWords, ResAcc) ->
+    lists:foldl(fun ({WArg, MatchFun, RestWArg}, Acc) ->
+                        sa_trie_match_part( BWords, WArg, MatchFun, RestWArg, Acc)
+                end, ResAcc, [
+                              {"*", fun sa_trie_match/3, RestW},
+                              {"#", fun sa_trie_match_skip_any/3, MWords},
+							 {W, fun sa_trie_match/3, RestW}]).
+
+sa_trie_match_part( BWords, Search, MatchFun, RestW, ResAcc) ->
+    case sa_trie_child( BWords, Search) of
+        {ok, NextWords} -> MatchFun( NextWords, RestW, ResAcc);
+        error -> ResAcc
+				
+    end.
+
+sa_trie_match_skip_any(BWords, [], ResAcc) ->
+    sa_trie_match(BWords, [], ResAcc);
+sa_trie_match_skip_any( BWords, [_ | RestW] = Words, ResAcc) ->
+    sa_trie_match_skip_any( BWords, RestW,
+                        sa_trie_match( BWords, Words, ResAcc)).
+
+
+sa_trie_child( [], Word)->
+	error;
+sa_trie_child( [BW | NextWords], Word) ->
+    case BW of
+	Word -> {ok, NextWords};
+	_  -> error
+    end.
+
+
+  
 
 trie_match(X, Words) ->
     trie_match(X, root, Words, []).
@@ -152,6 +196,7 @@ trie_match(X, Words) ->
 trie_match(X, Node, [], ResAcc) ->
     trie_match_part(X, Node, "#", fun trie_match_skip_any/4, [],
                     trie_bindings(X, Node) ++ ResAcc);
+
 trie_match(X, Node, [W | RestW] = Words, ResAcc) ->
     lists:foldl(fun ({WArg, MatchFun, RestWArg}, Acc) ->
                         trie_match_part(X, Node, WArg, MatchFun, RestWArg, Acc)
