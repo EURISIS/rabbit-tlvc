@@ -118,7 +118,7 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
               "could not find queue '~s'",
               [D]);
         {ok, Q = #amqqueue{name = QueueName}} ->
-	
+	spawn(fun() ->
 	rabbit_misc:execute_mnesia_transaction(
          fun() ->
 
@@ -143,7 +143,7 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
 
            
 	end)
-
+	end)
 
     end,
 
