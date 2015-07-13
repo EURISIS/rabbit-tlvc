@@ -118,11 +118,10 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
               "could not find queue '~s'",
               [D]);
         {ok, Q = #amqqueue{name = QueueName}} ->
+	spawn(fun() ->
 	
-	rabbit_misc:execute_mnesia_transaction(
-         fun() ->
 
-	    Cs = mnesia:match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'},read),
+	    Cs = mnesia:dirty_match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'}),
 		[
 		begin
 		
@@ -131,61 +130,61 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
 		    Msg = rabbit_basic:message(X, RK, Props, Payload),
 		    Delivery = 	rabbit_basic:delivery(false, false, Msg, undefined),	
 	       
-   			QN = sa_trie_match(X,CWords,Words,[]),
+   			QN = sa_trie_match(Words,CWords,[]),
 			case QN of
-				[] -> rabbit_amqqueue:deliver([Q], Delivery);
-%				[] -> noop
+				ok -> rabbit_amqqueue:deliver([Q], Delivery);
+				[] -> noop
 			end
 
-
-
-		    
+	    
 		end
 		|| #cached{ key = #cachekey{routing_key=RK}, content = Content }<-Cs]
 
            
 	end)
 
-
     end,
 
     ok.
 
 
-sa_trie_match(X, BWords, [], ResAcc) ->
-    sa_trie_match_part(X, BWords, "#", fun sa_trie_match_skip_any/4, [],
-                     "Test" ++ ResAcc);
-
-
-sa_trie_match(X, BWords, [W | RestW] = MWords, ResAcc) ->
+%KEY MATCHING
+sa_trie_match( BWords, [], ResAcc) ->
+	case BWords of
+		[] -> ok;
+		_ ->   sa_trie_match_part( BWords, "#", fun sa_trie_match_skip_any/3, [],
+                     "Test" ++ ResAcc)
+	end;
+sa_trie_match( BWords, [W | RestW] = MWords, ResAcc) ->
     lists:foldl(fun ({WArg, MatchFun, RestWArg}, Acc) ->
-                        sa_trie_match_part(X, BWords, WArg, MatchFun, RestWArg, Acc)
-                end, ResAcc, [{W, fun sa_trie_match/4, RestW},
-                              {"*", fun sa_trie_match/4, RestW},
-                              {"#", fun sa_trie_match_skip_any/4, MWords}]).
+                        sa_trie_match_part( BWords, WArg, MatchFun, RestWArg, Acc)
+                end, ResAcc, [
+                              {"*", fun sa_trie_match/3, RestW},
+                              {"#", fun sa_trie_match_skip_any/3, MWords},
+							 {W, fun sa_trie_match/3, RestW}]).
 
-sa_trie_match_part(X, BWords, Search, MatchFun, RestW, ResAcc) ->
-    case sa_trie_child(X, BWords, Search) of
-        {ok, NextWords} -> MatchFun(X, NextWords, RestW, ResAcc);
-        {error, ErrorWord} ->  ErrorWord
+sa_trie_match_part( BWords, Search, MatchFun, RestW, ResAcc) ->
+    case sa_trie_child( BWords, Search) of
+        {ok, NextWords} -> MatchFun( NextWords, RestW, ResAcc);
+        error -> ResAcc
 				
     end.
 
-sa_trie_match_skip_any(X, BWords, [], ResAcc) ->
-    sa_trie_match(X, BWords, [], ResAcc);
-sa_trie_match_skip_any(X, BWords, [_ | RestW] = Words, ResAcc) ->
-    sa_trie_match_skip_any(X, BWords, RestW,
-                        sa_trie_match(X, BWords, Words, ResAcc)).
+sa_trie_match_skip_any(BWords, [], ResAcc) ->
+    sa_trie_match(BWords, [], ResAcc);
+sa_trie_match_skip_any( BWords, [_ | RestW] = Words, ResAcc) ->
+    sa_trie_match_skip_any( BWords, RestW,
+                        sa_trie_match( BWords, Words, ResAcc)).
 
 
-sa_trie_child(X, [], Word)->
-	{error , []};
-
-sa_trie_child(X, [BW | TestBWords] = BWords, Word) ->
+sa_trie_child( [], Word)->
+	error;
+sa_trie_child( [BW | NextWords], Word) ->
     case BW of
-	Word -> {ok, TestBWords};
-	_  -> {error,BW}
+	Word -> {ok, NextWords};
+	_  -> error
     end.
+
 
   
 

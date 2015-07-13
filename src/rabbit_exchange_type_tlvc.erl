@@ -119,10 +119,9 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
               [D]);
         {ok, Q = #amqqueue{name = QueueName}} ->
 	spawn(fun() ->
-	rabbit_misc:execute_mnesia_transaction(
-         fun() ->
+	
 
-	    Cs = mnesia:match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'},read),
+	    Cs = mnesia:dirty_match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'}),
 		[
 		begin
 		
@@ -142,7 +141,6 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
 		|| #cached{ key = #cachekey{routing_key=RK}, content = Content }<-Cs]
 
            
-	end)
 	end)
 
     end,
