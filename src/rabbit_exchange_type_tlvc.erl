@@ -8,6 +8,7 @@
 -export([validate/1, validate_binding/2,
          create/2, recover/2, delete/3, policy_changed/3,
          add_binding/3, remove_bindings/3, assert_args_equivalence/2]).
+-export([info/1,info/2,policy_changed/2]).
 
 description() ->
     [{name, <<"x-tlvc">>},
@@ -15,11 +16,15 @@ description() ->
 
 serialise_events() -> false.
 
+info(_X) -> [].
+info(_X, _) -> [].
+
+
 %% NB: This may return duplicate results in some situations (that's ok)
 
 
-route(Exchange = #exchange{name = Name},
-      Delivery = #delivery{message = #basic_message{
+route(_Exchange = #exchange{name = Name},
+      _Delivery = #delivery{message = #basic_message{
                              routing_keys = RKs,
                              content = Content
                             }}) ->
@@ -66,10 +71,12 @@ rabbit_misc:execute_mnesia_transaction(
 delete(none, _Exchange, _Bs) ->
     ok.
 
+
+policy_changed(_X1, _X2) -> ok.
 policy_changed(_Tx, _X1, _X2) -> ok.
 
-add_binding(transaction, Exchange = #exchange{name = XName}, Binding = #binding{ key = RoutingKey,
-                      destination = QueueName }) ->
+add_binding(transaction, Exchange = #exchange{name = _XName}, Binding = #binding{ key = _RoutingKey,
+                      destination = _QueueName }) ->
 
 internal_add_binding(Exchange,Binding),
 	ok;
@@ -104,7 +111,7 @@ assert_args_equivalence(X, Args) ->
 %%-------------------------------------------------------------
 
 
-internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{source = X, key = K, destination = D,
+internal_add_binding(_Exchange = #exchange{name = _XName},  _Binding =#binding{source = X, key = K, destination = D,
                               args = Args}) ->
     Words = split_topic_key(K),
     FinalNode = follow_down_create(X, Words),
@@ -117,7 +124,7 @@ internal_add_binding(Exchange = #exchange{name = XName},  Binding =#binding{sour
               internal_error,
               "could not find queue '~s'",
               [D]);
-        {ok, Q = #amqqueue{name = QueueName}} ->
+        {ok, Q = #amqqueue{name = _QueueName}} ->
 	spawn(fun() ->
 	
 
@@ -177,7 +184,7 @@ sa_trie_match_skip_any( BWords, [_ | RestW] = Words, ResAcc) ->
                         sa_trie_match( BWords, Words, ResAcc)).
 
 
-sa_trie_child( [], Word)->
+sa_trie_child( [], _Word)->
 	error;
 sa_trie_child( [BW | NextWords], Word) ->
     case BW of
