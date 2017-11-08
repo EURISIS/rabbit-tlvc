@@ -75,10 +75,9 @@ delete(none, _Exchange, _Bs) ->
 policy_changed(_X1, _X2) -> ok.
 policy_changed(_Tx, _X1, _X2) -> ok.
 
-add_binding(transaction, Exchange = #exchange{name = _XName}, Binding = #binding{ key = _RoutingKey,
-                      destination = _QueueName }) ->
+add_binding(transaction, Exchange = #exchange{}, Binding = #binding{}) ->
 
-internal_add_binding(Exchange,Binding),
+internal_add_binding(Exchange, Binding),
 	ok;
 
 add_binding(none, _Exchange, _Binding) ->
@@ -111,7 +110,7 @@ assert_args_equivalence(X, Args) ->
 %%-------------------------------------------------------------
 
 
-internal_add_binding(_Exchange = #exchange{name = _XName},  _Binding =#binding{source = X, key = K, destination = D,
+internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
                               args = Args}) ->
     Words = split_topic_key(K),
     FinalNode = follow_down_create(X, Words),
@@ -124,7 +123,7 @@ internal_add_binding(_Exchange = #exchange{name = _XName},  _Binding =#binding{s
               internal_error,
               "could not find queue '~s'",
               [D]);
-        {ok, Q = #amqqueue{name = _QueueName}} ->
+        {ok, Q = #amqqueue{}} ->
 	spawn(fun() ->
 	
 
