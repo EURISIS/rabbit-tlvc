@@ -23,8 +23,8 @@ info(_X, _) -> [].
 %% NB: This may return duplicate results in some situations (that's ok)
 
 
-route(_Exchange = #exchange{name = Name},
-      _Delivery = #delivery{message = #basic_message{
+route(#exchange{name = Name},
+      #delivery{message = #basic_message{
                              routing_keys = RKs,
                              content = Content
                             }}) ->
