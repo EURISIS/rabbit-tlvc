@@ -4,6 +4,8 @@ PROJECT_MOD = rabbitmq_tlvc
 
 DEPS = rabbit rabbit_common amqp_client
 TEST_DEPS = rabbitmq_ct_helpers rabbitmq_ct_client_helpers
+
+#This line allows build system to target latest 3.6.X release, ignoring 3.7 RCs
 current_rmq_ref = stable
 
 DEP_EARLY_PLUGINS = rabbit_common/mk/rabbitmq-early-plugin.mk

@@ -24,6 +24,10 @@ http://www.rabbitmq.com/community-plugins.html.
 You can build and install it like any other plugin (see
 [the plugin development guide](http://www.rabbitmq.com/plugin-development.html)).
 
+Use 'make' (no parameters) to build,
+'make dist' to build the .ez files for deployment.
+
+
 # Use
 
 To use the TLVC exchange, with e.g., py-amqp:
