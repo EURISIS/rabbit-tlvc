@@ -2,8 +2,8 @@ PROJECT = rabbitmq_tlvc
 PROJECT_DESCRIPTION = Last Value Cache Topic Exchange
 PROJECT_MOD = rabbitmq_tlvc
 
-DEPS = rabbit rabbit_common amqp_client
-TEST_DEPS = rabbitmq_ct_helpers rabbitmq_ct_client_helpers
+DEPS = rabbit_common rabbit
+TEST_DEPS = rabbitmq_ct_helpers rabbitmq_ct_client_helpers amqp_client
 
 #This line allows build system to target latest 3.6.X release, ignoring 3.7 RCs
 current_rmq_ref = stable
