@@ -124,7 +124,7 @@ internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
               internal_error,
               "could not find queue '~s'",
               [D]);
-        {ok, Q = #amqqueue{}} ->
+        {ok, Q} when ?is_amqqueue(Q) ->
 	spawn(fun() ->
 	
 
