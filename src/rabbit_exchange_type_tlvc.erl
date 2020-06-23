@@ -74,7 +74,6 @@ delete(none, _Exchange, _Bs) ->
 
 
 policy_changed(_X1, _X2) -> ok.
-policy_changed(_Tx, _X1, _X2) -> ok.
 
 add_binding(transaction, Exchange = #exchange{}, Binding = #binding{}) ->
 
