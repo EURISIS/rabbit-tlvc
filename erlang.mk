@@ -4680,40 +4680,6 @@ define dep_autopatch_rebar.erl
 		end,
 		Write("\n")
 	end(),
-	GetHexVsn = fun(N, NP) ->
-		case file:consult("$(call core_native_path,$(DEPS_DIR)/$1/rebar.lock)") of
-			{ok, Lock} ->
-				io:format("~p~n", [Lock]),
-				case lists:keyfind("1.1.0", 1, Lock) of
-					{_, LockPkgs} ->
-						io:format("~p~n", [LockPkgs]),
-						case lists:keyfind(atom_to_binary(N, latin1), 1, LockPkgs) of
-							{_, {pkg, _, Vsn}, _} ->
-								io:format("~p~n", [Vsn]),
-								{N, {hex, NP, binary_to_list(Vsn)}};
-							_ ->
-								false
-						end;
-					_ ->
-						false
-				end;
-			_ ->
-				false
-		end
-	end,
-	SemVsn = fun
-		("~>" ++ S0) ->
-			S = case S0 of
-				" " ++ S1 -> S1;
-				_ -> S0
-			end,
-			case length([ok || $$. <- S]) of
-				0 -> S ++ ".0.0";
-				1 -> S ++ ".0";
-				_ -> S
-			end;
-		(S) -> S
-	end,
 	fun() ->
 		File = case lists:keyfind(deps, 1, Conf) of
 			false -> [];
