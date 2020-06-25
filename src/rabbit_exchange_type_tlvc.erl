@@ -54,7 +54,21 @@ create(_Tx, _X) -> ok.
 recover(_X, _Bs) -> ok.
 
 delete(transaction, #exchange{name = X}, _Bs) ->
-    ok;
+    trie_remove_all_nodes(X),
+    trie_remove_all_edges(X),
+    trie_remove_all_bindings(X),
+
+rabbit_misc:execute_mnesia_transaction(
+         fun() ->
+            case mnesia:match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'},write) of
+		[]->
+			ok;
+                [#cached{ key = K }] -> mnesia:delete(?TLVC_TABLE, K,write);
+		_Other -> 
+			ok
+            end
+	end),
+	ok;
 delete(none, _Exchange, _Bs) ->
     ok.
 
@@ -98,6 +112,45 @@ assert_args_equivalence(X, Args) ->
 
 internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
                               args = Args}) ->
+    Words = split_topic_key(K),
+    FinalNode = follow_down_create(X, Words),
+    trie_add_binding(X, FinalNode, D, Args),
+
+    case rabbit_amqqueue:lookup(D) of
+
+        {error, not_found} ->
+            rabbit_misc:protocol_error(
+              internal_error,
+              "could not find queue '~s'",
+              [D]);
+        {ok, Q} when ?is_amqqueue(Q) ->
+	spawn(fun() ->
+	
+
+	    Cs = mnesia:dirty_match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'}),
+		[
+		begin
+		
+		    CWords = split_topic_key(RK),
+		    {Props, Payload} = rabbit_basic:from_content(Content),
+		    Msg = rabbit_basic:message(X, RK, Props, Payload),
+		    Delivery = 	rabbit_basic:delivery(false, false, Msg, undefined),	
+	       
+   			QN = sa_trie_match(Words,CWords,[]),
+			case QN of
+				ok -> rabbit_amqqueue:deliver([Q], Delivery);
+				[] -> noop
+			end
+
+	    
+		end
+		|| #cached{ key = #cachekey{routing_key=RK}, content = Content }<-Cs]
+
+           
+	end)
+
+    end,
+
     ok.
 
 
