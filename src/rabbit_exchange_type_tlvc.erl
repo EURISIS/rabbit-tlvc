@@ -54,11 +54,7 @@ create(_Tx, _X) -> ok.
 recover(_X, _Bs) -> ok.
 
 delete(transaction, #exchange{name = X}, _Bs) ->
-    trie_remove_all_nodes(X),
-    trie_remove_all_edges(X),
-    trie_remove_all_bindings(X),
-
-rabbit_misc:execute_mnesia_transaction() -> ok;
+    ok;
 delete(none, _Exchange, _Bs) ->
     ok.
 
@@ -102,20 +98,6 @@ assert_args_equivalence(X, Args) ->
 
 internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
                               args = Args}) ->
-    Words = split_topic_key(K),
-    FinalNode = follow_down_create(X, Words),
-    trie_add_binding(X, FinalNode, D, Args),
-
-    case rabbit_amqqueue:lookup(D) of
-
-        {error, not_found} ->
-            rabbit_misc:protocol_error(
-              internal_error,
-              "could not find queue '~s'",
-              [D]);
-        {ok, Q} when ?is_amqqueue(Q) -> ok;
-	end,
-
     ok.
 
 
