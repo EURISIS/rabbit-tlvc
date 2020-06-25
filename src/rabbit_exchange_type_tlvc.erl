@@ -58,9 +58,7 @@ delete(transaction, #exchange{name = X}, _Bs) ->
     trie_remove_all_edges(X),
     trie_remove_all_bindings(X),
 
-rabbit_misc:execute_mnesia_transaction(
-	end),
-	ok;
+rabbit_misc:execute_mnesia_transaction() -> ok;
 delete(none, _Exchange, _Bs) ->
     ok.
 
@@ -115,11 +113,8 @@ internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
               internal_error,
               "could not find queue '~s'",
               [D]);
-        {ok, Q} when ?is_amqqueue(Q) ->
-	spawn(fun() ->
-	end)
-
-    end,
+        {ok, Q} when ?is_amqqueue(Q) -> ok;
+	end,
 
     ok.
 
