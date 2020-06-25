@@ -60,7 +60,7 @@ delete(transaction, #exchange{name = X}, _Bs) ->
 
 rabbit_misc:execute_mnesia_transaction(
          fun() ->
-            case mnesia:match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'},write) of
+            case mnesia:match_object(?TLVC_TABLE,#cached{exchange = X, _ = '_'},write) of
 		[]->
 			ok;
                 [#cached{ key = K }] -> mnesia:delete(?TLVC_TABLE, K,write);
@@ -127,7 +127,7 @@ internal_add_binding(#exchange{}, #binding{source = X, key = K, destination = D,
 	spawn(fun() ->
 	
 
-	    Cs = mnesia:dirty_match_object(?TLVC_TABLE,#cached{_ = '_', exchange = X, _ = '_'}),
+	    Cs = mnesia:dirty_match_object(?TLVC_TABLE,#cached{exchange = X, _ = '_'}),
 		[
 		begin
 		
